@@ -1,3 +1,5 @@
+x-servcie-path: &service-path ../services
+
 services:
   rabbitmq:
     image: rabbitmq:4.1-management-alpine
@@ -11,7 +13,9 @@ services:
       - trading_net
 
   finance_worker:
-    build: ./finance_worker
+    build:
+      context: *service-path
+      dockerfile: finance_worker/Dockerfile
     container_name: finance_worker
     env_file: .env
     depends_on:
@@ -20,7 +24,9 @@ services:
       - trading_net
 
   social_worker:
-    build: ./social_worker
+    build:
+      context: *service-path
+      dockerfile: social_worker/Dockerfile
     container_name: social_worker
     env_file: .env
     depends_on:
@@ -29,7 +35,9 @@ services:
       - trading_net
 
   ml_processor:
-    build: ./ml_processor
+    build:
+      context: *service-path
+      dockerfile: ml_processor/Dockerfile
     container_name: ml_processor
     env_file: .env
     depends_on:
@@ -59,7 +67,9 @@ services:
       - trading_net
 
   trade_executor:
-    build: ./trade_executor
+    build:
+      context: *service-path
+      dockerfile: trade_executor/Dockerfile
     container_name: trade_executor
     env_file: .env
     depends_on:
@@ -68,16 +78,18 @@ services:
     networks:
       - trading_net
 
-  dashboard:
-    build: ./dashboard
-    container_name: dashboard
-    ports:
-      - "8080:8080"
-    depends_on:
-      - redis
-      - db
-    networks:
-      - trading_net
+  # dashboard:
+  #   build:
+  #     context: *service-path
+  #     dockerfile: dashboard/Dockerfile
+  #   container_name: dashboard
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - redis
+  #     - db
+  #   networks:
+  #     - trading_net
 
 networks:
   trading_net:
