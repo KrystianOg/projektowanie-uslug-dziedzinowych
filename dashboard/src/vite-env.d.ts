@@ -6,6 +6,7 @@ interface ViteTypeOptions {
 
 interface ImportMetaEnv {
   readonly VITE_API_GATEWAY_HTTP_BASE: string
+  readonly VITE_API_GATEWAY_WS: string
 }
 
 interface ImportMeta {

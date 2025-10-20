@@ -2,6 +2,8 @@ import os
 import json
 import logging
 
+from typing import Any
+
 from alpaca.data.live import CryptoDataStream
 from alpaca.data.models.quotes import Quote
 
@@ -12,9 +14,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
-RAW_QUEUE_NAME = "raw_data_queue"
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "")
 ALPACA_SECRET = os.getenv("ALPACA_SECRET", "")
 SYMBOL_TO_TRACK = os.getenv("SYMBOLS_TO_TRACK", "BTC/USD")
@@ -23,15 +22,27 @@ if ALPACA_API_KEY == "":
     raise Exception('Please provide "ALPACA_API_KEY"')
 
 if ALPACA_SECRET == "":
-    raise Exception('Please provice "ALPACA_SECRET"')
+    raise Exception('Please provide "ALPACA_SECRET"')
 
 channel: BlockingChannel
+RAW_QUEUE_NAME = "raw_data_queue"
 
 
 def connect_to_rabbitmq() -> BlockingChannel:
+    rabbitmq_host = os.getenv("RABBITMQ_HOST")
+    rabbitmq_user = os.getenv("RABBITMQ_USER")
+    rabbitmq_pass = os.getenv("RABBITMQ_PASS")
+
+    if rabbitmq_user is None or rabbitmq_pass is None:
+        raise Exception("Please provide rabbitmq credentials")
+
+    if rabbitmq_host is None:
+        raise Exception("Please provice RABBITMQ_HOST.")
+
+    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
     try:
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST)
+            pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials)
         )
         channel = connection.channel()
 
@@ -79,7 +90,7 @@ async def on_quote(quote: Quote) -> None:
         logging.error(f"Error processing trade data: {e}")
 
 
-wss_client.subscribe_quotes(on_quote, "BTC/USD")  # type: ignore[arg-type]
+wss_client.subscribe_quotes(on_quote, "BTC/USD")  # type: ignore
 
 
 if __name__ == "__main__":
@@ -91,7 +102,7 @@ if __name__ == "__main__":
     try:
         wss_client = CryptoDataStream(ALPACA_API_KEY, ALPACA_SECRET)
 
-        wss_client.subscribe_quotes(on_quote, SYMBOL_TO_TRACK)  # type: ignore[arg-type]
+        wss_client.subscribe_quotes(on_quote, SYMBOL_TO_TRACK)  # type: ignore
         logging.info(f"Subscribed to quotes for {SYMBOL_TO_TRACK}. Starting stream...")
 
         # Start the stream (this is a blocking call that runs forever)
