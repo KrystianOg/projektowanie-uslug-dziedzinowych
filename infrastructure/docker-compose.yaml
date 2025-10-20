@@ -6,8 +6,8 @@ services:
       - "5672:5672" # AMQP port
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
     healthcheck:
@@ -25,9 +25,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: trading_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - timescale_data:/var/lib/postgresql/data
     healthcheck:
@@ -59,10 +59,10 @@ services:
       dockerfile: Dockerfile
     container_name: finance_worker
     environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASS=admin
-      - RAW_QUEUE_NAME=data.finance
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - RAW_QUEUE_NAME=${RAW_QUEUE_NAME}
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_SECRET=${ALPACA_SECRET}
     depends_on:
@@ -78,9 +78,9 @@ services:
       dockerfile: Dockerfile
     container_name: social_worker
     environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASS=admin
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -94,9 +94,9 @@ services:
       dockerfile: Dockerfile
     container_name: ml_processor
     environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASS=admin
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -110,10 +110,9 @@ services:
       dockerfile: Dockerfile
     container_name: trade_executor
     environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASS=admin
-      # FIXME: remove these secrets
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_SECRET=${ALPACA_SECRET}
     depends_on:
@@ -151,8 +150,8 @@ services:
       context: ../dashboard
       dockerfile: Dockerfile
       args:
-        - VITE_API_GATEWAY_HTTP_BASE=http://localhost:8000
-        - VITE_API_GATEWAY_WS=ws://localhost:8000/ws
+        - VITE_API_GATEWAY_HTTP_BASE=${VITE_API_GATEWAY_HTTP_BASE}
+        - VITE_API_GATEWAY_WS=${VITE_API_GATEWAY_WS}
     container_name: dashboard
     ports:
       - "3000:80"

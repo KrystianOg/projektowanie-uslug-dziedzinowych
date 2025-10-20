@@ -1,5 +1,6 @@
 .PHONY: test-integration test-e2e
 
+# placeholders for tests scripts
 test-integration: 
 	@echo "Test integration"
 
