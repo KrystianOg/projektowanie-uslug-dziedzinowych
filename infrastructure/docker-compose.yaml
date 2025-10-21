@@ -12,9 +12,10 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq/
     healthcheck:
       test: rabbitmq-diagnostics -q ping
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - trading_net
 
@@ -32,9 +33,10 @@ services:
       - timescale_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d trading_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     networks:
       - trading_net
 
@@ -47,9 +49,10 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
     networks:
       - trading_net
 
@@ -68,6 +71,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     networks:
       - trading_net
@@ -84,6 +88,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     networks:
       - trading_net
@@ -100,6 +105,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     networks:
       - trading_net
@@ -118,8 +124,10 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+        restart: true
       db:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     networks:
       - trading_net
@@ -134,13 +142,16 @@ services:
     depends_on:
       redis: 
         condition: service_healthy
+        restart: true
       db:
         condition: service_healthy
+        restart: true
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     restart: unless-stopped
     networks:
       - trading_net
@@ -158,6 +169,7 @@ services:
     depends_on:
       api_gateway:
         condition: service_healthy
+        restart: true
     restart: unless-stopped
     networks:
       - trading_net
