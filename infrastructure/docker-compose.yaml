@@ -1,0 +1,184 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - trading_net
+
+  db:
+    # image: timescale/timescaledb:latest-pg17
+    image: postgres:17-alpine
+    container_name: db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d trading_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - trading_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+    networks:
+      - trading_net
+
+  finance_worker:
+    build:
+      context: ../services/finance_worker
+      dockerfile: Dockerfile
+    container_name: finance_worker
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - RAW_QUEUE_NAME=${RAW_QUEUE_NAME}
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_SECRET=${ALPACA_SECRET}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+  social_worker:
+    build:
+      context: ../services/social_worker
+      dockerfile: Dockerfile
+    container_name: social_worker
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+  ml_processor:
+    build:
+      context: ../services/ml_processor
+      dockerfile: Dockerfile
+    container_name: ml_processor
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+  trade_executor:
+    build:
+      context: ../services/trade_executor
+      dockerfile: Dockerfile
+    container_name: trade_executor
+    environment:
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_SECRET=${ALPACA_SECRET}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        restart: true
+      db:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+  api_gateway:
+    build:
+      context: ../services/api_gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    ports:
+      - '8000:8000'
+    depends_on:
+      redis: 
+        condition: service_healthy
+        restart: true
+      db:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_GATEWAY_HTTP_BASE=${VITE_API_GATEWAY_HTTP_BASE}
+        - VITE_API_GATEWAY_WS=${VITE_API_GATEWAY_WS}
+    container_name: dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      api_gateway:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    networks:
+      - trading_net
+
+networks:
+  trading_net:
+    driver: bridge
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+  timescale_data:

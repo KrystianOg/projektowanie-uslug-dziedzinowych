@@ -1,0 +1,14 @@
+interface ViteTypeOptions {
+  // By adding this line, you can make the type of ImportMetaEnv strict
+  // to disallow unknown keys.
+  strictImportMetaEnv: unknown
+}
+
+interface ImportMetaEnv {
+  readonly VITE_API_GATEWAY_HTTP_BASE: string
+  readonly VITE_API_GATEWAY_WS: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
